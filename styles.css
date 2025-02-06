@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 2rem;
+    background: #0D0E13;
+}
+
+#app {
+    max-width: 460px;
+    margin: 0 auto;
+}
+
+.transcript-container {
+  max-width: 800px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #fff;
+}
+
+.transcript-segment {
+  display: flex;
+  margin-bottom: 2rem;
+  position: relative;
+  padding-left: 32px;
+}
+
+.progress-bar {
+  width: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  position: absolute;
+  border-radius: 4px;
+  height: 100%;
+  min-height: 40px;
+  left: 0;
+}
+
+.progress-fill {
+  position: absolute;
+  width: 100%;
+  background: #5B53FF;
+  top: 0;
+  border-radius: 4px;
+}
+
+.progress-fill.completed {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 12px;
+  color: rgba(189, 192, 212, 0.71);
+  opacity: 0.7;
+}
+
+.content {
+  flex: 1;
+  line-height: 1.6;
+}
+
+.text {
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.text span {
+  display: inline;
+}
+
+.text .past {
+  color: rgba(212, 214, 230, 0.75);
+}
+
+.text .current {
+  color: #7E85FF;
+}
+
+.text .future {
+  color: rgba(243, 243, 247, 0.90);
+}
+
+.transcript-controls {
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.transcript-controls button {
+  background: rgb(99, 102, 241);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.transcript-controls button:hover {
+  background: rgb(79, 82, 221);
+} 
