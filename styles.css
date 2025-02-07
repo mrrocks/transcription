@@ -1,20 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 2rem;
-    background: #0D0E13;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  margin: 0;
+  padding: 2rem;
+  background: #0d0e13;
 }
 
 #app {
-    max-width: 460px;
-    margin: 0 auto;
+  max-width: 460px;
+  margin: 0 auto;
 }
 
 .transcript-container {
   max-width: 800px;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: #fff;
 }
 
@@ -26,7 +34,7 @@ body {
 }
 
 .progress-bar {
-  width: 2px;
+  width: 1.5px;
   background: rgba(255, 255, 255, 0.1);
   position: absolute;
   border-radius: 4px;
@@ -38,7 +46,7 @@ body {
 .progress-fill {
   position: absolute;
   width: 100%;
-  background: #5B53FF;
+  background: #5b53ff;
   top: 0;
   border-radius: 4px;
 }
@@ -76,11 +84,11 @@ body {
 }
 
 .text .current {
-  color: #7E85FF;
+  color: #7e85ff;
 }
 
 .text .future {
-  color: rgba(243, 243, 247, 0.90);
+  color: rgba(243, 243, 247, 0.9);
 }
 
 .transcript-controls {
@@ -102,4 +110,15 @@ body {
 
 .transcript-controls button:hover {
   background: rgb(79, 82, 221);
-} 
+}
+
+.bullet-point {
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  background-color: currentColor;
+  opacity: 0.7;
+  border-radius: 80%;
+  margin: 0 4px;
+  vertical-align: middle;
+}
