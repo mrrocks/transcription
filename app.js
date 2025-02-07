@@ -1,6 +1,6 @@
 const TRANSCRIPT_CONFIG = {
   animation: {
-    stateTransitionDuration: 150,
+    stateTransitionDuration: 300,
     easing: 'easeOutQuad',
     linearEasing: 'linear',
   },
@@ -12,7 +12,7 @@ const TRANSCRIPT_CONFIG = {
     completedProgress: 'rgba(0, 0, 0, 0.3)',
   },
   transcript: {
-    charactersPerMinute: 900,
+    charactersPerMinute: 1000,
     get secondsPerChar() {
       return 60 / this.charactersPerMinute;
     },
@@ -180,7 +180,6 @@ class TranscriptSegment {
     const targets = [];
     const colors = [];
 
-    // Force update all spans when seeking
     this.words.forEach((word, index) => {
       const span = spans[index];
       let newState;
@@ -197,18 +196,24 @@ class TranscriptSegment {
         newColor = TRANSCRIPT_CONFIG.colors.highlight;
       }
 
-      // Always update during seeking to ensure correct state
-      span.dataset.state = newState;
-      targets.push(span);
-      colors.push(newColor);
+      // Only update if state has changed
+      if (span.dataset.state !== newState) {
+        span.dataset.state = newState;
+        targets.push(span);
+        colors.push(newColor);
+      }
     });
 
     if (targets.length > 0) {
       anime({
         targets,
         color: (el, i) => colors[i],
-        duration: TRANSCRIPT_CONFIG.animation.stateTransitionDuration,
-        easing: TRANSCRIPT_CONFIG.animation.easing,
+        duration: isPlaying
+          ? 50
+          : TRANSCRIPT_CONFIG.animation.stateTransitionDuration,
+        easing: isPlaying
+          ? TRANSCRIPT_CONFIG.animation.linearEasing
+          : TRANSCRIPT_CONFIG.animation.easing,
       });
     }
   }
