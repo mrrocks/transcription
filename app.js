@@ -196,8 +196,8 @@ class TranscriptSegment {
         newColor = TRANSCRIPT_CONFIG.colors.highlight;
       }
 
-      // Only update if state has changed
-      if (span.dataset.state !== newState) {
+      // Always update during seeking (when not playing)
+      if (!isPlaying || span.dataset.state !== newState) {
         span.dataset.state = newState;
         targets.push(span);
         colors.push(newColor);
@@ -205,15 +205,18 @@ class TranscriptSegment {
     });
 
     if (targets.length > 0) {
+      // Instant transition for seeking, animated for playback
+      const duration = isPlaying ? 50 : 0;
+
+      const easing = isPlaying
+        ? TRANSCRIPT_CONFIG.animation.linearEasing
+        : 'linear';
+
       anime({
         targets,
         color: (el, i) => colors[i],
-        duration: isPlaying
-          ? 50
-          : TRANSCRIPT_CONFIG.animation.stateTransitionDuration,
-        easing: isPlaying
-          ? TRANSCRIPT_CONFIG.animation.linearEasing
-          : TRANSCRIPT_CONFIG.animation.easing,
+        duration,
+        easing,
       });
     }
   }
