@@ -99,11 +99,16 @@ class TranscriptSegment {
 
     this.words.forEach((word, index) => {
       const span = document.createElement('span');
-      span.textContent = word.text + (index < this.words.length - 1 ? ' ' : '');
+      span.textContent = word.text;
       span.className = 'future';
       span.dataset.start = word.start;
       span.style.cursor = 'pointer';
       text.appendChild(span);
+
+      // Add space after word (except for last word)
+      if (index < this.words.length - 1) {
+        text.appendChild(document.createTextNode(' '));
+      }
     });
 
     content.appendChild(header);
