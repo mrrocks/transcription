@@ -59,32 +59,25 @@ class TranscriptUI {
     this.segmentsContainer = document.getElementById('segments-container');
     this.playPauseBtn = document.getElementById('playPauseBtn');
     this.resetBtn = document.getElementById('resetBtn');
+    this.template = document.getElementById('segment-template');
   }
 
   createSegmentElement(segment) {
-    const el = document.createElement('div');
-    el.className = 'transcript-segment';
+    const clone = this.template.content.cloneNode(true);
+    const el = clone.querySelector('.transcript-segment');
 
-    const content = document.createElement('div');
-    content.className = 'content';
+    el.querySelector('.timestamp').textContent =
+      `${formatTime(segment.start)} / ${formatTime(segment.end)}`;
+    el.querySelector('.speaker').textContent = segment.speaker;
 
-    content.innerHTML = `
-      <div class="header">
-        <span>${formatTime(segment.start)} / ${formatTime(segment.end)}</span>
-        <span class="bullet-point"></span>
-        <span>${segment.speaker}</span>
-      </div>
-      <div class="text">
-        ${segment.words
-          .map(
-            word =>
-              `<span class="future" data-start="${word.start}" style="cursor:pointer">${word.text}</span>`
-          )
-          .join(' ')}
-      </div>
-    `;
+    const textEl = el.querySelector('.text');
+    textEl.innerHTML = segment.words
+      .map(
+        word =>
+          `<span class="future" data-start="${word.start}" style="cursor:pointer">${word.text}</span>`
+      )
+      .join(' ');
 
-    el.appendChild(content);
     return el;
   }
 
