@@ -93,6 +93,7 @@ body {
   display: inline;
   position: relative;
   transition: transform 0.2s ease;
+  cursor: pointer;
 }
 
 .text span:hover {

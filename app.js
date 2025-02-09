@@ -1,3 +1,5 @@
+import anime from 'animejs';
+
 const CONFIG = {
   animation: {
     defaultDuration: 200,
@@ -18,259 +20,6 @@ const CONFIG = {
     },
   },
 };
-
-const formatTime = seconds => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
-
-class Word {
-  constructor(text, start, end, chars) {
-    this.text = text;
-    this.start = start;
-    this.end = end;
-    this.chars = chars;
-    this.state = 'future';
-    this.transitionState = 'none';
-  }
-
-  updateState(currentTime) {
-    const inTime = CONFIG.animation.playbackTransitionDuration / 1000;
-    const outTime = CONFIG.animation.highlightToPastDuration / 1000;
-    if (currentTime < this.start - inTime) {
-      this.state = 'future';
-    } else if (currentTime < this.start) {
-      this.state = 'transitioningIn';
-    } else if (currentTime < this.end) {
-      this.state = 'active';
-    } else if (currentTime < this.end + outTime) {
-      this.state = 'transitioningOut';
-    } else {
-      this.state = 'past';
-    }
-    return this.state;
-  }
-}
-
-class TranscriptUI {
-  constructor() {
-    this.container = document.querySelector('.transcript-container');
-    this.segmentsContainer = document.getElementById('segments-container');
-    this.playPauseBtn = document.getElementById('playPauseBtn');
-    this.resetBtn = document.getElementById('resetBtn');
-    this.template = document.getElementById('segment-template');
-  }
-
-  createSegmentElement(segment) {
-    const clone = this.template.content.cloneNode(true);
-    const el = clone.querySelector('.transcript-segment');
-
-    el.querySelector('.timestamp').textContent =
-      `${formatTime(segment.start)} / ${formatTime(segment.end)}`;
-    el.querySelector('.speaker').textContent = segment.speaker;
-
-    const textEl = el.querySelector('.text');
-    textEl.innerHTML = segment.words
-      .map(
-        word =>
-          `<span class="future" data-start="${word.start}" style="cursor:pointer">${word.text}</span>`
-      )
-      .join(' ');
-
-    return el;
-  }
-
-  updateWordElements(spans, words, isPlaying) {
-    spans.forEach((span, i) => {
-      const word = words[i];
-      const oldState = span.dataset.state;
-      const newState = word.state;
-
-      if (!isPlaying || oldState !== newState) {
-        span.dataset.state = newState;
-        let duration = CONFIG.animation.defaultDuration;
-        if (isPlaying && newState === 'transitioningOut') {
-          duration = CONFIG.animation.highlightToPastDuration;
-        }
-
-        let color = CONFIG.colors.unread;
-        if (newState === 'active' || newState === 'transitioningIn') {
-          color = CONFIG.colors.active;
-        } else if (newState === 'transitioningOut' || newState === 'past') {
-          color = CONFIG.colors.read;
-        }
-
-        anime.remove(span);
-        anime({
-          targets: span,
-          duration,
-          color,
-          easing: isPlaying
-            ? CONFIG.animation.playbackEasing
-            : CONFIG.animation.defaultEasing,
-        });
-      }
-    });
-  }
-}
-
-class TranscriptSegment {
-  constructor(start, speaker, text, ui) {
-    this.start = start;
-    this.speaker = speaker;
-    this.text = text;
-    this.ui = ui;
-    this.totalChars = text.replace(/\s+/g, '').length;
-    this.duration = this.totalChars * CONFIG.speed.secondsPerChar;
-    this.end = this.start + this.duration;
-    this.words = this.processWords();
-    this.element = null;
-  }
-
-  processWords() {
-    const words = this.text.split(' ');
-    let charCount = 0;
-
-    return words.map(word => {
-      const chars = word.replace(/\s+/g, '').length;
-      const start = this.start + charCount * CONFIG.speed.secondsPerChar;
-      charCount += chars;
-      const end = this.start + charCount * CONFIG.speed.secondsPerChar;
-      return new Word(word, start, end, chars);
-    });
-  }
-
-  update(currentTime, isPlaying) {
-    this.words.forEach(word => word.updateState(currentTime));
-    if (this.element) {
-      const spans = this.element.querySelectorAll('.text span');
-      this.ui.updateWordElements(spans, this.words, isPlaying);
-    }
-  }
-}
-
-class PlaybackController {
-  constructor(transcript) {
-    this.transcript = transcript;
-    this.currentTime = 0;
-    this.isPlaying = false;
-    this.startTime = null;
-    this.pausedAt = 0;
-  }
-
-  play() {
-    this.isPlaying = true;
-    this.startTime = performance.now() - this.pausedAt * 1000;
-    this.animate();
-  }
-
-  pause() {
-    this.isPlaying = false;
-    this.pausedAt = this.currentTime;
-  }
-
-  togglePlayback() {
-    this.isPlaying ? this.pause() : this.play();
-    return this.isPlaying;
-  }
-
-  seek(time) {
-    const wasPlaying = this.isPlaying;
-    this.pause();
-    this.currentTime = this.pausedAt = time;
-    this.transcript.update(time, false);
-    if (wasPlaying) this.play();
-  }
-
-  reset() {
-    this.pause();
-    this.currentTime = this.pausedAt = 0;
-    this.transcript.reset();
-  }
-
-  animate() {
-    if (!this.isPlaying) return;
-
-    const elapsed = (performance.now() - this.startTime) / 1000;
-
-    if (elapsed >= this.transcript.duration) {
-      this.transcript.update(this.transcript.duration, false);
-      this.pause();
-      this.pausedAt = 0;
-    } else {
-      this.currentTime = elapsed;
-      this.transcript.update(elapsed, true);
-      requestAnimationFrame(() => this.animate());
-    }
-  }
-}
-
-class Transcript {
-  constructor(segments) {
-    this.ui = new TranscriptUI();
-    this.segments = this.createSegments(segments);
-    this.duration = Math.max(...this.segments.map(s => s.end));
-    this.playback = new PlaybackController(this);
-    this.setupListeners();
-    this.render();
-  }
-
-  createSegments(data) {
-    let time = 0;
-    return data.map(segment => {
-      const s = new TranscriptSegment(
-        time,
-        segment.speaker,
-        segment.text,
-        this.ui
-      );
-      time = s.end;
-      return s;
-    });
-  }
-
-  setupListeners() {
-    this.ui.playPauseBtn.onclick = () => {
-      const isPlaying = this.playback.togglePlayback();
-      this.ui.playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
-    };
-
-    this.ui.resetBtn.onclick = () => {
-      this.playback.reset();
-      this.ui.playPauseBtn.textContent = 'Play';
-    };
-
-    this.ui.segmentsContainer.onclick = e => {
-      if (e.target.tagName === 'SPAN' && e.target.dataset.start) {
-        this.playback.seek(parseFloat(e.target.dataset.start));
-      }
-    };
-  }
-
-  render() {
-    this.segments.forEach(segment => {
-      segment.element = this.ui.createSegmentElement(segment);
-      this.ui.segmentsContainer.appendChild(segment.element);
-    });
-  }
-
-  update(time, isPlaying) {
-    this.segments.forEach(segment => segment.update(time, isPlaying));
-  }
-
-  reset() {
-    this.segments.forEach(segment => {
-      const spans = segment.element.querySelectorAll('.text span');
-      anime.remove(spans);
-      spans.forEach(span => {
-        span.style.color = CONFIG.colors.unread;
-        span.dataset.state = 'future';
-      });
-      segment.words.forEach(word => (word.state = 'future'));
-    });
-  }
-}
 
 const transcriptData = [
   {
@@ -295,4 +44,200 @@ const transcriptData = [
   },
 ];
 
-const transcript = new Transcript(transcriptData);
+const formatTime = seconds => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+const getWordState = (word, currentTime) => {
+  const inTime = CONFIG.animation.playbackTransitionDuration / 1000;
+  const outTime = CONFIG.animation.highlightToPastDuration / 1000;
+
+  if (currentTime < word.start - inTime) return 'future';
+  if (currentTime < word.start) return 'transitioningIn';
+  if (currentTime < word.end) return 'active';
+  if (currentTime < word.end + outTime) return 'transitioningOut';
+  return 'past';
+};
+
+const processWords = (text, startTime) => {
+  const words = text.split(' ');
+  let charCount = 0;
+
+  return words.map(word => {
+    const chars = word.replace(/\s+/g, '').length;
+    const start = startTime + charCount * CONFIG.speed.secondsPerChar;
+    charCount += chars;
+    const end = startTime + charCount * CONFIG.speed.secondsPerChar;
+
+    return { text: word, start, end, chars };
+  });
+};
+
+const createSegment = (startTime, speaker, text) => {
+  const totalChars = text.replace(/\s+/g, '').length;
+  const duration = totalChars * CONFIG.speed.secondsPerChar;
+  const end = startTime + duration;
+  const words = processWords(text, startTime);
+
+  return { speaker, text, start: startTime, end, words };
+};
+
+const updateWordElements = (spans, words, currentTime, isPlaying) => {
+  spans.forEach((span, i) => {
+    const word = words[i];
+    const newState = getWordState(word, currentTime);
+    const oldState = span.dataset.state;
+
+    if (!isPlaying || oldState !== newState) {
+      span.dataset.state = newState;
+      const duration =
+        newState === 'transitioningOut' && isPlaying
+          ? CONFIG.animation.highlightToPastDuration
+          : CONFIG.animation.defaultDuration;
+
+      const colors = {
+        future: CONFIG.colors.unread,
+        transitioningIn: CONFIG.colors.active,
+        active: CONFIG.colors.active,
+        transitioningOut: CONFIG.colors.read,
+        past: CONFIG.colors.read,
+      };
+
+      anime.remove(span);
+      anime({
+        targets: span,
+        duration,
+        color: colors[newState],
+        easing: isPlaying
+          ? CONFIG.animation.playbackEasing
+          : CONFIG.animation.defaultEasing,
+      });
+    }
+  });
+};
+
+const createTranscriptPlayer = transcriptData => {
+  let currentTime = 0;
+  let isPlaying = false;
+  let startTime = null;
+  let pausedAt = 0;
+
+  const container = document.querySelector('.transcript-container');
+  const segmentsContainer = document.getElementById('segments-container');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const template = document.getElementById('segment-template');
+
+  let time = 0;
+  const segments = transcriptData.map(data => {
+    const segment = createSegment(time, data.speaker, data.text);
+    time = segment.end;
+    return segment;
+  });
+
+  const duration = Math.max(...segments.map(s => s.end));
+
+  const createSegmentElement = segment => {
+    const clone = template.content.cloneNode(true);
+    const el = clone.querySelector('.transcript-segment');
+
+    el.querySelector('.timestamp').textContent =
+      `${formatTime(segment.start)} / ${formatTime(segment.end)}`;
+    el.querySelector('.speaker').textContent = segment.speaker;
+    el.querySelector('.text').innerHTML = segment.words
+      .map(
+        word =>
+          `<span class="future" data-start="${word.start}">${word.text}</span>`
+      )
+      .join(' ');
+
+    return el;
+  };
+
+  const update = (time, isPlaying) => {
+    segments.forEach(segment => {
+      const spans = segment.element.querySelectorAll('.text span');
+      updateWordElements(spans, segment.words, time, isPlaying);
+    });
+  };
+
+  const animate = () => {
+    if (!isPlaying) return;
+
+    const elapsed = (performance.now() - startTime) / 1000;
+
+    if (elapsed >= duration) {
+      update(duration, false);
+      isPlaying = false;
+      pausedAt = 0;
+    } else {
+      currentTime = elapsed;
+      update(elapsed, true);
+      requestAnimationFrame(animate);
+    }
+  };
+
+  const play = () => {
+    isPlaying = true;
+    startTime = performance.now() - pausedAt * 1000;
+    requestAnimationFrame(animate);
+  };
+
+  const pause = () => {
+    isPlaying = false;
+    pausedAt = currentTime;
+  };
+
+  const seek = time => {
+    if (isPlaying) {
+      pause();
+      currentTime = pausedAt = time;
+      update(time, false);
+      play();
+    } else {
+      currentTime = pausedAt = time;
+      update(time, false);
+    }
+  };
+
+  const reset = () => {
+    pause();
+    currentTime = pausedAt = 0;
+    segments.forEach(segment => {
+      const spans = segment.element.querySelectorAll('.text span');
+      anime.remove(spans);
+      spans.forEach(span => {
+        span.style.color = CONFIG.colors.unread;
+        span.dataset.state = 'future';
+      });
+    });
+  };
+
+  segments.forEach(segment => {
+    segment.element = createSegmentElement(segment);
+    segmentsContainer.appendChild(segment.element);
+  });
+
+  playPauseBtn.onclick = () => {
+    isPlaying ? pause() : play();
+    playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
+  };
+
+  resetBtn.onclick = () => {
+    reset();
+    playPauseBtn.textContent = 'Play';
+  };
+
+  segmentsContainer.onclick = e => {
+    if (e.target.tagName === 'SPAN' && e.target.dataset.start) {
+      window.getSelection().removeAllRanges();
+      seek(parseFloat(e.target.dataset.start));
+    }
+  };
+
+  return { play, pause, seek, reset };
+};
+
+const player = createTranscriptPlayer(transcriptData);
