@@ -47,7 +47,7 @@ body {
 }
 
 .transcript-controls button:hover {
-  background-color: #7E85FF;
+  background-color: #5B53FF;
 }
 
 .transcript-segment {
@@ -61,17 +61,26 @@ body {
 }
 
 .header {
+  display: flex;
+  align-items: center;
   margin-bottom: 8px;
   color: rgba(189, 192, 212, 0.71);
   font-size: 14px;
+  line-height: 24px;
+  gap: 4px;
+  opacity: 0.7;
 }
+
 
 .bullet-point {
-  margin: 0 8px;
-}
-
-.bullet-point::before {
-  content: '•';
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  background-color: currentColor;
+  opacity: 0.7;
+  border-radius: 80%;
+  margin: 0 4px;
+  vertical-align: middle;
 }
 
 .text {
@@ -81,10 +90,9 @@ body {
 }
 
 .text span {
-  transition: color 0.3s ease;
   display: inline;
   position: relative;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .text span:hover {
@@ -102,7 +110,7 @@ body {
   top: calc(var(--hover-y) * -1);
   bottom: calc(var(--hover-y) * -1);
   background: #3d404e;
-  border-radius: 6px;
+  border-radius: 8px;
   z-index: -1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   opacity: 0;

@@ -4,13 +4,12 @@ const CONFIG = {
     defaultEasing: 'easeOutQuad',
     playbackEasing: 'linear',
     playbackTransitionDuration: 50,
-    highlightToPastDuration: 600,
+    highlightToPastDuration: 800,
   },
   colors: {
-    primary: '#5B53FF',
-    activeWord: '#7E85FF',
-    readWords: 'rgba(212, 214, 230, 0.75)',
-    unreadWords: 'rgba(243, 243, 247, 0.90)',
+    active: '#7E85FF',
+    read: 'rgba(212, 214, 230, 0.75)',
+    unread: 'rgba(243, 243, 247, 0.90)',
   },
   speed: {
     charactersPerMinute: 1000,
@@ -36,41 +35,19 @@ class Word {
     this.transitionState = 'none';
   }
 
-  getColor() {
-    return CONFIG.colors[
-      this.state === 'highlight'
-        ? 'activeWord'
-        : this.state === 'past'
-          ? 'readWords'
-          : 'unreadWords'
-    ];
-  }
-
   updateState(currentTime) {
-    const transitionInTime = CONFIG.animation.playbackTransitionDuration / 1000;
-    const transitionOutTime = CONFIG.animation.highlightToPastDuration / 1000;
-
-    if (currentTime < this.start - transitionInTime) {
+    const inTime = CONFIG.animation.playbackTransitionDuration / 1000;
+    const outTime = CONFIG.animation.highlightToPastDuration / 1000;
+    if (currentTime < this.start - inTime) {
       this.state = 'future';
-      this.transitionState = 'none';
-    } else if (
-      currentTime >= this.start - transitionInTime &&
-      currentTime < this.start
-    ) {
-      this.state = 'highlight';
-      this.transitionState = 'transitioning-in';
-    } else if (currentTime >= this.start && currentTime < this.end) {
-      this.state = 'highlight';
-      this.transitionState = 'active';
-    } else if (
-      currentTime >= this.end &&
-      currentTime < this.end + transitionOutTime
-    ) {
-      this.state = 'past';
-      this.transitionState = 'transitioning-out';
+    } else if (currentTime < this.start) {
+      this.state = 'transitioningIn';
+    } else if (currentTime < this.end) {
+      this.state = 'active';
+    } else if (currentTime < this.end + outTime) {
+      this.state = 'transitioningOut';
     } else {
       this.state = 'past';
-      this.transitionState = 'none';
     }
     return this.state;
   }
@@ -112,10 +89,6 @@ class TranscriptUI {
   }
 
   updateWordElements(spans, words, isPlaying) {
-    const targets = [];
-    const colors = [];
-    const durations = [];
-
     spans.forEach((span, i) => {
       const word = words[i];
       const oldState = span.dataset.state;
@@ -123,31 +96,29 @@ class TranscriptUI {
 
       if (!isPlaying || oldState !== newState) {
         span.dataset.state = newState;
-        targets.push(span);
-        colors.push(word.getColor());
+        let duration = CONFIG.animation.defaultDuration;
+        if (isPlaying && newState === 'transitioningOut') {
+          duration = CONFIG.animation.highlightToPastDuration;
+        }
 
-        durations.push(
-          !isPlaying
-            ? CONFIG.animation.defaultDuration
-            : word.transitionState === 'transitioning-out'
-              ? CONFIG.animation.highlightToPastDuration
-              : CONFIG.animation.playbackTransitionDuration
-        );
-      }
-    });
+        let color = CONFIG.colors.unread;
+        if (newState === 'active' || newState === 'transitioningIn') {
+          color = CONFIG.colors.active;
+        } else if (newState === 'transitioningOut' || newState === 'past') {
+          color = CONFIG.colors.read;
+        }
 
-    if (targets.length) {
-      targets.forEach((target, i) => {
+        anime.remove(span);
         anime({
-          targets: target,
-          color: colors[i],
-          duration: durations[i],
+          targets: span,
+          duration,
+          color,
           easing: isPlaying
             ? CONFIG.animation.playbackEasing
             : CONFIG.animation.defaultEasing,
         });
-      });
-    }
+      }
+    });
   }
 }
 
@@ -300,7 +271,7 @@ class Transcript {
       const spans = segment.element.querySelectorAll('.text span');
       anime.remove(spans);
       spans.forEach(span => {
-        span.style.color = CONFIG.colors.unreadWords;
+        span.style.color = CONFIG.colors.unread;
         span.dataset.state = 'future';
       });
       segment.words.forEach(word => (word.state = 'future'));
