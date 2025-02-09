@@ -1,15 +1,16 @@
 const CONFIG = {
   animation: {
-    duration: 300,
-    easing: 'easeOutQuad',
-    linearEasing: 'linear',
-    seekDuration: 50,
+    defaultDuration: 200,
+    defaultEasing: 'easeOutQuad',
+    playbackEasing: 'linear',
+    playbackTransitionDuration: 50,
+    highlightToPastDuration: 600,
   },
   colors: {
     primary: '#5B53FF',
-    highlight: '#7E85FF',
-    past: 'rgba(212, 214, 230, 0.75)',
-    future: 'rgba(243, 243, 247, 0.90)',
+    activeWord: '#7E85FF',
+    readWords: 'rgba(212, 214, 230, 0.75)',
+    unreadWords: 'rgba(243, 243, 247, 0.90)',
   },
   speed: {
     charactersPerMinute: 1000,
@@ -32,16 +33,45 @@ class Word {
     this.end = end;
     this.chars = chars;
     this.state = 'future';
+    this.transitionState = 'none';
   }
 
   getColor() {
-    return CONFIG.colors[this.state === 'highlight' ? 'highlight' : this.state];
+    return CONFIG.colors[
+      this.state === 'highlight'
+        ? 'activeWord'
+        : this.state === 'past'
+          ? 'readWords'
+          : 'unreadWords'
+    ];
   }
 
   updateState(currentTime) {
-    if (currentTime < this.start) this.state = 'future';
-    else if (currentTime >= this.end) this.state = 'past';
-    else this.state = 'highlight';
+    const transitionInTime = CONFIG.animation.playbackTransitionDuration / 1000;
+    const transitionOutTime = CONFIG.animation.highlightToPastDuration / 1000;
+
+    if (currentTime < this.start - transitionInTime) {
+      this.state = 'future';
+      this.transitionState = 'none';
+    } else if (
+      currentTime >= this.start - transitionInTime &&
+      currentTime < this.start
+    ) {
+      this.state = 'highlight';
+      this.transitionState = 'transitioning-in';
+    } else if (currentTime >= this.start && currentTime < this.end) {
+      this.state = 'highlight';
+      this.transitionState = 'active';
+    } else if (
+      currentTime >= this.end &&
+      currentTime < this.end + transitionOutTime
+    ) {
+      this.state = 'past';
+      this.transitionState = 'transitioning-out';
+    } else {
+      this.state = 'past';
+      this.transitionState = 'none';
+    }
     return this.state;
   }
 }
@@ -84,6 +114,7 @@ class TranscriptUI {
   updateWordElements(spans, words, isPlaying) {
     const targets = [];
     const colors = [];
+    const durations = [];
 
     spans.forEach((span, i) => {
       const word = words[i];
@@ -94,15 +125,27 @@ class TranscriptUI {
         span.dataset.state = newState;
         targets.push(span);
         colors.push(word.getColor());
+
+        durations.push(
+          !isPlaying
+            ? CONFIG.animation.defaultDuration
+            : word.transitionState === 'transitioning-out'
+              ? CONFIG.animation.highlightToPastDuration
+              : CONFIG.animation.playbackTransitionDuration
+        );
       }
     });
 
     if (targets.length) {
-      anime({
-        targets,
-        color: (el, i) => colors[i],
-        duration: isPlaying ? CONFIG.animation.seekDuration : 0,
-        easing: isPlaying ? CONFIG.animation.linearEasing : 'linear',
+      targets.forEach((target, i) => {
+        anime({
+          targets: target,
+          color: colors[i],
+          duration: durations[i],
+          easing: isPlaying
+            ? CONFIG.animation.playbackEasing
+            : CONFIG.animation.defaultEasing,
+        });
       });
     }
   }
@@ -257,7 +300,7 @@ class Transcript {
       const spans = segment.element.querySelectorAll('.text span');
       anime.remove(spans);
       spans.forEach(span => {
-        span.style.color = CONFIG.colors.future;
+        span.style.color = CONFIG.colors.unreadWords;
         span.dataset.state = 'future';
       });
       segment.words.forEach(word => (word.state = 'future'));
