@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
+:root {
+  --hover-x: 4px;
+  --hover-y: 2px;
+}
+
 body {
   font-family:
     'Inter',
@@ -86,15 +91,16 @@ body {
   transform: translateY(-2px);
   z-index: 10;
   color: white !important;
+  user-select: none;
 }
 
 .text span::after {
   content: '';
   position: absolute;
-  left: -4px;
-  right: -4px;
-  top: -2px;
-  bottom: -2px;
+  left: calc(var(--hover-x) * -1);
+  right: calc(var(--hover-x) * -1);
+  top: calc(var(--hover-y) * -1);
+  bottom: calc(var(--hover-y) * -1);
   background: #3d404e;
   border-radius: 6px;
   z-index: -1;
@@ -109,8 +115,8 @@ body {
 .text span:hover::after {
   opacity: 1;
   transform: scale(1);
-  left: -8px;
-  right: -8px;
-  top: -6px;
-  bottom: -6px;
+  left: calc(var(--hover-x) * -2);
+  right: calc(var(--hover-x) * -2);
+  top: calc(var(--hover-y) * -2);
+  bottom: calc(var(--hover-y) * -3);
 }
