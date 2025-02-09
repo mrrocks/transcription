@@ -9,7 +9,6 @@ const TRANSCRIPT_CONFIG = {
     highlight: '#7E85FF',
     pastText: 'rgba(212, 214, 230, 0.75)',
     futureText: 'rgba(243, 243, 247, 0.90)',
-    completedProgress: 'rgba(0, 0, 0, 0.3)',
   },
   transcript: {
     charactersPerMinute: 1000,
@@ -69,12 +68,6 @@ class TranscriptSegment {
     const segment = document.createElement('div');
     segment.className = 'transcript-segment';
 
-    const progress = document.createElement('div');
-    progress.className = 'progress-bar';
-    const progressFill = document.createElement('div');
-    progressFill.className = 'progress-fill';
-    progress.appendChild(progressFill);
-
     const content = document.createElement('div');
     content.className = 'content';
 
@@ -105,7 +98,6 @@ class TranscriptSegment {
       span.style.cursor = 'pointer';
       text.appendChild(span);
 
-      // Add space after word (except for last word)
       if (index < this.words.length - 1) {
         text.appendChild(document.createTextNode(' '));
       }
@@ -113,48 +105,15 @@ class TranscriptSegment {
 
     content.appendChild(header);
     content.appendChild(text);
-
-    segment.appendChild(progress);
     segment.appendChild(content);
 
     return segment;
   }
 
   update(currentTime, shouldAnimate = true, isPlaying = false) {
-    let progress;
-    if (currentTime < this.start) {
-      progress = 0;
-    } else if (currentTime >= this.end) {
-      progress = 1;
-    } else {
-      const elapsedTime = currentTime - this.start;
-      progress = elapsedTime / this.duration;
-    }
-
-    const progressBar = this.element.querySelector('.progress-fill');
-    const duration = shouldAnimate
-      ? TRANSCRIPT_CONFIG.animation.stateTransitionDuration
-      : 0;
-
     if (currentTime >= this.end) {
-      progressBar.classList.add('completed');
-      anime({
-        targets: progressBar,
-        height: '100%',
-        backgroundColor: TRANSCRIPT_CONFIG.colors.completedProgress,
-        duration,
-        easing: TRANSCRIPT_CONFIG.animation.easing,
-      });
       this.updateWordStates('past', isPlaying);
     } else {
-      progressBar.classList.remove('completed');
-      anime({
-        targets: progressBar,
-        height: `${progress * 100}%`,
-        backgroundColor: TRANSCRIPT_CONFIG.colors.primary,
-        duration,
-        easing: TRANSCRIPT_CONFIG.animation.easing,
-      });
       this.updateWordProgress(currentTime, isPlaying);
     }
   }
@@ -302,10 +261,15 @@ class Transcript {
       return transcriptSegment;
     });
 
-    this.container = this.createContainer();
+    this.container = document.querySelector('.transcript-container');
+    this.segmentsContainer = document.getElementById('segments-container');
+    this.playPauseBtn = document.getElementById('playPauseBtn');
+    this.resetBtn = document.getElementById('resetBtn');
+
     this.playbackController = new PlaybackController(this);
-    this.createControls();
+    this.setupControls();
     this.setupWordClickHandlers();
+    this.renderSegments();
   }
 
   getTotalDuration() {
@@ -313,7 +277,7 @@ class Transcript {
   }
 
   setupWordClickHandlers() {
-    this.container.addEventListener('click', e => {
+    this.segmentsContainer.addEventListener('click', e => {
       if (e.target.tagName === 'SPAN' && e.target.dataset.start) {
         const time = parseFloat(e.target.dataset.start);
         this.playbackController.seek(time);
@@ -321,114 +285,33 @@ class Transcript {
     });
   }
 
-  createControls() {
-    const controls = document.createElement('div');
-    controls.className = 'transcript-controls';
-
-    const playPause = document.createElement('button');
-    playPause.textContent = 'Play';
-    playPause.onclick = () => {
+  setupControls() {
+    this.playPauseBtn.onclick = () => {
       this.playbackController.togglePlayback();
-      playPause.textContent = this.playbackController.isPlaying
+      this.playPauseBtn.textContent = this.playbackController.isPlaying
         ? 'Pause'
         : 'Play';
     };
 
-    const reset = document.createElement('button');
-    reset.textContent = 'Reset';
-    reset.onclick = () => this.playbackController.reset();
-
-    controls.appendChild(playPause);
-    controls.appendChild(reset);
-    this.container.insertBefore(controls, this.container.firstChild);
-    this.playPauseBtn = playPause;
+    this.resetBtn.onclick = () => this.playbackController.reset();
   }
 
-  createContainer() {
-    const container = document.createElement('div');
-    container.className = 'transcript-container';
+  renderSegments() {
     this.segments.forEach(segment => {
-      container.appendChild(segment.element);
+      this.segmentsContainer.appendChild(segment.element);
     });
-    return container;
   }
 
   updateAllSegments(time, forceAnimate = false, isPlaying = false) {
     this.segments.forEach(segment => {
-      // For seeking, we want instant transitions for segments between origin and destination
       const shouldAnimate =
         isPlaying || (time >= segment.start && time <= segment.end);
-
-      if (time < segment.start) {
-        this.updateSegmentProgress(
-          segment,
-          0,
-          TRANSCRIPT_CONFIG.colors.primary,
-          time,
-          isPlaying,
-          shouldAnimate
-        );
-      } else if (time >= segment.end) {
-        this.updateSegmentProgress(
-          segment,
-          100,
-          TRANSCRIPT_CONFIG.colors.completedProgress,
-          time,
-          isPlaying,
-          shouldAnimate
-        );
-      } else {
-        segment.update(time, shouldAnimate, isPlaying);
-      }
+      segment.update(time, shouldAnimate, isPlaying);
     });
-  }
-
-  updateSegmentProgress(
-    segment,
-    height,
-    color,
-    time,
-    isPlaying,
-    shouldAnimate
-  ) {
-    const progressBar = segment.element.querySelector('.progress-fill');
-
-    if (!shouldAnimate) {
-      // Apply changes instantly without animation
-      progressBar.style.height = `${height}%`;
-      progressBar.style.backgroundColor = color;
-      segment.update(time, false, isPlaying);
-      return;
-    }
-
-    anime({
-      targets: progressBar,
-      height: `${height}%`,
-      backgroundColor: color,
-      duration: TRANSCRIPT_CONFIG.animation.stateTransitionDuration,
-      easing: isPlaying
-        ? TRANSCRIPT_CONFIG.animation.linearEasing
-        : TRANSCRIPT_CONFIG.animation.easing,
-    });
-    segment.update(time, true, isPlaying);
   }
 
   resetAllSegments() {
     this.segments.forEach(segment => {
-      const progressBar = segment.element.querySelector('.progress-fill');
-      progressBar.classList.remove('completed');
-      progressBar.style.height = '0%';
-      progressBar.style.backgroundColor = TRANSCRIPT_CONFIG.colors.primary;
-
-      anime.remove(progressBar);
-      anime({
-        targets: progressBar,
-        height: '0%',
-        backgroundColor: TRANSCRIPT_CONFIG.colors.primary,
-        duration: 0,
-        easing: 'linear',
-      });
-
       const spans = segment.element.querySelectorAll('.text span');
       anime.remove(spans);
       spans.forEach(span => {
@@ -464,5 +347,3 @@ const transcriptData = [
 ];
 
 const transcript = new Transcript(transcriptData);
-document.getElementById('app').innerHTML = '';
-document.getElementById('app').appendChild(transcript.container);
