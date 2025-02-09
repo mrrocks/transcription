@@ -4,7 +4,7 @@ const CONFIG = {
     defaultEasing: 'easeOutQuad',
     playbackEasing: 'linear',
     playbackTransitionDuration: 50,
-    highlightToPastDuration: 800,
+    highlightToPastDuration: 600,
   },
   colors: {
     active: '#7E85FF',
