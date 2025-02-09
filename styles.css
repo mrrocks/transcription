@@ -77,4 +77,40 @@ body {
 
 .text span {
   transition: color 0.3s ease;
+  display: inline;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.text span:hover {
+  transform: translateY(-2px);
+  z-index: 10;
+  color: white !important;
+}
+
+.text span::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: -2px;
+  bottom: -2px;
+  background: #3d404e;
+  border-radius: 6px;
+  z-index: -1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: scale(0.97);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+.text span:hover::after {
+  opacity: 1;
+  transform: scale(1);
+  left: -8px;
+  right: -8px;
+  top: -6px;
+  bottom: -6px;
 }
