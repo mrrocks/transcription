@@ -1,16 +1,17 @@
-const TRANSCRIPT_CONFIG = {
+const CONFIG = {
   animation: {
-    stateTransitionDuration: 300,
+    duration: 300,
     easing: 'easeOutQuad',
     linearEasing: 'linear',
+    seekDuration: 50,
   },
   colors: {
     primary: '#5B53FF',
     highlight: '#7E85FF',
-    pastText: 'rgba(212, 214, 230, 0.75)',
-    futureText: 'rgba(243, 243, 247, 0.90)',
+    past: 'rgba(212, 214, 230, 0.75)',
+    future: 'rgba(243, 243, 247, 0.90)',
   },
-  transcript: {
+  speed: {
     charactersPerMinute: 1000,
     get secondsPerChar() {
       return 60 / this.charactersPerMinute;
@@ -24,159 +25,120 @@ const formatTime = seconds => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-class TranscriptSegment {
-  constructor(start, end, speaker, text) {
-    this.start = start;
+class Word {
+  constructor(text, start, end, chars) {
     this.text = text;
-    this.speaker = speaker;
-
-    this.totalChars = this.countChars(text);
-    this.duration =
-      this.totalChars * TRANSCRIPT_CONFIG.transcript.secondsPerChar;
-    this.end = this.start + this.duration;
-
-    this.words = this.processWords(text);
-    this.element = this.createSegmentElement();
+    this.start = start;
+    this.end = end;
+    this.chars = chars;
+    this.state = 'future';
   }
 
-  countChars(text) {
-    return text.replace(/\s+/g, '').length;
+  getColor() {
+    return CONFIG.colors[this.state === 'highlight' ? 'highlight' : this.state];
   }
 
-  processWords(text) {
-    const words = text.split(' ');
-    let charCount = 0;
+  updateState(currentTime) {
+    if (currentTime < this.start) this.state = 'future';
+    else if (currentTime >= this.end) this.state = 'past';
+    else this.state = 'highlight';
+    return this.state;
+  }
+}
 
-    return words.map(word => {
-      const wordChars = this.countChars(word);
-      const wordStart =
-        this.start + charCount * TRANSCRIPT_CONFIG.transcript.secondsPerChar;
-      charCount += wordChars;
-      const wordEnd =
-        this.start + charCount * TRANSCRIPT_CONFIG.transcript.secondsPerChar;
-
-      return {
-        text: word,
-        start: wordStart,
-        end: wordEnd,
-        chars: wordChars,
-      };
-    });
+class TranscriptUI {
+  constructor() {
+    this.container = document.querySelector('.transcript-container');
+    this.segmentsContainer = document.getElementById('segments-container');
+    this.playPauseBtn = document.getElementById('playPauseBtn');
+    this.resetBtn = document.getElementById('resetBtn');
   }
 
-  createSegmentElement() {
-    const segment = document.createElement('div');
-    segment.className = 'transcript-segment';
+  createSegmentElement(segment) {
+    const el = document.createElement('div');
+    el.className = 'transcript-segment';
 
     const content = document.createElement('div');
     content.className = 'content';
 
-    const header = document.createElement('div');
-    header.className = 'header';
+    content.innerHTML = `
+      <div class="header">
+        <span>${formatTime(segment.start)} / ${formatTime(segment.end)}</span>
+        <span class="bullet-point"></span>
+        <span>${segment.speaker}</span>
+      </div>
+      <div class="text">
+        ${segment.words
+          .map(
+            word =>
+              `<span class="future" data-start="${word.start}" style="cursor:pointer">${word.text}</span>`
+          )
+          .join(' ')}
+      </div>
+    `;
 
-    const timestamp = document.createElement('span');
-    timestamp.textContent = `${formatTime(this.start)} / ${formatTime(this.end)}`;
-
-    const bulletPoint = document.createElement('span');
-    bulletPoint.className = 'bullet-point';
-
-    const speakerEl = document.createElement('span');
-    speakerEl.textContent = this.speaker;
-
-    header.appendChild(timestamp);
-    header.appendChild(bulletPoint);
-    header.appendChild(speakerEl);
-
-    const text = document.createElement('div');
-    text.className = 'text';
-
-    this.words.forEach((word, index) => {
-      const span = document.createElement('span');
-      span.textContent = word.text;
-      span.className = 'future';
-      span.dataset.start = word.start;
-      span.style.cursor = 'pointer';
-      text.appendChild(span);
-
-      if (index < this.words.length - 1) {
-        text.appendChild(document.createTextNode(' '));
-      }
-    });
-
-    content.appendChild(header);
-    content.appendChild(text);
-    segment.appendChild(content);
-
-    return segment;
+    el.appendChild(content);
+    return el;
   }
 
-  update(currentTime, shouldAnimate = true, isPlaying = false) {
-    if (currentTime >= this.end) {
-      this.updateWordStates('past', isPlaying);
-    } else {
-      this.updateWordProgress(currentTime, isPlaying);
-    }
-  }
-
-  updateWordStates(state, isPlaying = false) {
-    const spans = this.element.querySelectorAll('.text span');
-    const colors = {
-      past: TRANSCRIPT_CONFIG.colors.pastText,
-      future: TRANSCRIPT_CONFIG.colors.futureText,
-      current: TRANSCRIPT_CONFIG.colors.highlight,
-    };
-
-    anime({
-      targets: spans,
-      color: colors[state],
-      duration: TRANSCRIPT_CONFIG.animation.stateTransitionDuration,
-      easing: TRANSCRIPT_CONFIG.animation.easing,
-    });
-  }
-
-  updateWordProgress(currentTime, isPlaying = false) {
-    const spans = this.element.querySelectorAll('.text span');
+  updateWordElements(spans, words, isPlaying) {
     const targets = [];
     const colors = [];
 
-    this.words.forEach((word, index) => {
-      const span = spans[index];
-      let newState;
-      let newColor;
+    spans.forEach((span, i) => {
+      const word = words[i];
+      const oldState = span.dataset.state;
+      const newState = word.state;
 
-      if (currentTime < word.start) {
-        newState = 'future';
-        newColor = TRANSCRIPT_CONFIG.colors.futureText;
-      } else if (currentTime >= word.end) {
-        newState = 'past';
-        newColor = TRANSCRIPT_CONFIG.colors.pastText;
-      } else {
-        newState = 'highlight';
-        newColor = TRANSCRIPT_CONFIG.colors.highlight;
-      }
-
-      // Always update during seeking (when not playing)
-      if (!isPlaying || span.dataset.state !== newState) {
+      if (!isPlaying || oldState !== newState) {
         span.dataset.state = newState;
         targets.push(span);
-        colors.push(newColor);
+        colors.push(word.getColor());
       }
     });
 
-    if (targets.length > 0) {
-      // Instant transition for seeking, animated for playback
-      const duration = isPlaying ? 50 : 0;
-
-      const easing = isPlaying
-        ? TRANSCRIPT_CONFIG.animation.linearEasing
-        : 'linear';
-
+    if (targets.length) {
       anime({
         targets,
         color: (el, i) => colors[i],
-        duration,
-        easing,
+        duration: isPlaying ? CONFIG.animation.seekDuration : 0,
+        easing: isPlaying ? CONFIG.animation.linearEasing : 'linear',
       });
+    }
+  }
+}
+
+class TranscriptSegment {
+  constructor(start, speaker, text, ui) {
+    this.start = start;
+    this.speaker = speaker;
+    this.text = text;
+    this.ui = ui;
+    this.totalChars = text.replace(/\s+/g, '').length;
+    this.duration = this.totalChars * CONFIG.speed.secondsPerChar;
+    this.end = this.start + this.duration;
+    this.words = this.processWords();
+    this.element = null;
+  }
+
+  processWords() {
+    const words = this.text.split(' ');
+    let charCount = 0;
+
+    return words.map(word => {
+      const chars = word.replace(/\s+/g, '').length;
+      const start = this.start + charCount * CONFIG.speed.secondsPerChar;
+      charCount += chars;
+      const end = this.start + charCount * CONFIG.speed.secondsPerChar;
+      return new Word(word, start, end, chars);
+    });
+  }
+
+  update(currentTime, isPlaying) {
+    this.words.forEach(word => word.updateState(currentTime));
+    if (this.element) {
+      const spans = this.element.querySelectorAll('.text span');
+      this.ui.updateWordElements(spans, this.words, isPlaying);
     }
   }
 }
@@ -202,46 +164,36 @@ class PlaybackController {
   }
 
   togglePlayback() {
-    if (this.isPlaying) {
-      this.pause();
-    } else {
-      this.play();
-    }
+    this.isPlaying ? this.pause() : this.play();
+    return this.isPlaying;
   }
 
   seek(time) {
     const wasPlaying = this.isPlaying;
     this.pause();
-    this.currentTime = time;
-    this.pausedAt = time;
-    this.transcript.updateAllSegments(time, true, false);
-    if (wasPlaying) {
-      this.play();
-    }
+    this.currentTime = this.pausedAt = time;
+    this.transcript.update(time, false);
+    if (wasPlaying) this.play();
   }
 
   reset() {
     this.pause();
-    this.currentTime = 0;
-    this.pausedAt = 0;
-    this.transcript.resetAllSegments();
-    this.transcript.playPauseBtn.textContent = 'Play';
+    this.currentTime = this.pausedAt = 0;
+    this.transcript.reset();
   }
 
   animate() {
     if (!this.isPlaying) return;
 
-    const now = performance.now();
-    const elapsed = (now - this.startTime) / 1000;
-    const totalDuration = this.transcript.getTotalDuration();
+    const elapsed = (performance.now() - this.startTime) / 1000;
 
-    if (elapsed >= totalDuration) {
-      this.transcript.updateAllSegments(totalDuration, true, false);
+    if (elapsed >= this.transcript.duration) {
+      this.transcript.update(this.transcript.duration, false);
       this.pause();
       this.pausedAt = 0;
     } else {
       this.currentTime = elapsed;
-      this.transcript.updateAllSegments(elapsed, true, true);
+      this.transcript.update(elapsed, true);
       requestAnimationFrame(() => this.animate());
     }
   }
@@ -249,80 +201,70 @@ class PlaybackController {
 
 class Transcript {
   constructor(segments) {
-    let currentTime = 0;
-    this.segments = segments.map(segment => {
-      const transcriptSegment = new TranscriptSegment(
-        currentTime,
-        null,
+    this.ui = new TranscriptUI();
+    this.segments = this.createSegments(segments);
+    this.duration = Math.max(...this.segments.map(s => s.end));
+    this.playback = new PlaybackController(this);
+    this.setupListeners();
+    this.render();
+  }
+
+  createSegments(data) {
+    let time = 0;
+    return data.map(segment => {
+      const s = new TranscriptSegment(
+        time,
         segment.speaker,
-        segment.text
+        segment.text,
+        this.ui
       );
-      currentTime = transcriptSegment.end;
-      return transcriptSegment;
-    });
-
-    this.container = document.querySelector('.transcript-container');
-    this.segmentsContainer = document.getElementById('segments-container');
-    this.playPauseBtn = document.getElementById('playPauseBtn');
-    this.resetBtn = document.getElementById('resetBtn');
-
-    this.playbackController = new PlaybackController(this);
-    this.setupControls();
-    this.setupWordClickHandlers();
-    this.renderSegments();
-  }
-
-  getTotalDuration() {
-    return Math.max(...this.segments.map(s => s.end));
-  }
-
-  setupWordClickHandlers() {
-    this.segmentsContainer.addEventListener('click', e => {
-      if (e.target.tagName === 'SPAN' && e.target.dataset.start) {
-        const time = parseFloat(e.target.dataset.start);
-        this.playbackController.seek(time);
-      }
+      time = s.end;
+      return s;
     });
   }
 
-  setupControls() {
-    this.playPauseBtn.onclick = () => {
-      this.playbackController.togglePlayback();
-      this.playPauseBtn.textContent = this.playbackController.isPlaying
-        ? 'Pause'
-        : 'Play';
+  setupListeners() {
+    this.ui.playPauseBtn.onclick = () => {
+      const isPlaying = this.playback.togglePlayback();
+      this.ui.playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
     };
 
-    this.resetBtn.onclick = () => this.playbackController.reset();
+    this.ui.resetBtn.onclick = () => {
+      this.playback.reset();
+      this.ui.playPauseBtn.textContent = 'Play';
+    };
+
+    this.ui.segmentsContainer.onclick = e => {
+      if (e.target.tagName === 'SPAN' && e.target.dataset.start) {
+        this.playback.seek(parseFloat(e.target.dataset.start));
+      }
+    };
   }
 
-  renderSegments() {
+  render() {
     this.segments.forEach(segment => {
-      this.segmentsContainer.appendChild(segment.element);
+      segment.element = this.ui.createSegmentElement(segment);
+      this.ui.segmentsContainer.appendChild(segment.element);
     });
   }
 
-  updateAllSegments(time, forceAnimate = false, isPlaying = false) {
-    this.segments.forEach(segment => {
-      const shouldAnimate =
-        isPlaying || (time >= segment.start && time <= segment.end);
-      segment.update(time, shouldAnimate, isPlaying);
-    });
+  update(time, isPlaying) {
+    this.segments.forEach(segment => segment.update(time, isPlaying));
   }
 
-  resetAllSegments() {
+  reset() {
     this.segments.forEach(segment => {
       const spans = segment.element.querySelectorAll('.text span');
       anime.remove(spans);
       spans.forEach(span => {
-        span.style.color = TRANSCRIPT_CONFIG.colors.futureText;
+        span.style.color = CONFIG.colors.future;
+        span.dataset.state = 'future';
       });
-      segment.updateWordStates('future');
+      segment.words.forEach(word => (word.state = 'future'));
     });
   }
 }
 
-// Demo data
 const transcriptData = [
   {
     speaker: 'Speaker 1',
