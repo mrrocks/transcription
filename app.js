@@ -147,10 +147,7 @@ const createTranscriptPlayer = transcriptData => {
       `${formatTime(segment.start)} / ${formatTime(segment.end)}`;
     el.querySelector('.speaker').textContent = segment.speaker;
     el.querySelector('.text').innerHTML = segment.words
-      .map(
-        word =>
-          `<span class="future" data-start="${word.start}">${word.text}</span>`
-      )
+      .map(word => `<span data-start="${word.start}">${word.text}</span>`)
       .join(' ');
 
     return el;
@@ -169,9 +166,8 @@ const createTranscriptPlayer = transcriptData => {
     const elapsed = (performance.now() - startTime) / 1000;
 
     if (elapsed >= duration) {
-      update(duration, false);
-      isPlaying = false;
-      pausedAt = 0;
+      reset();
+      playPauseBtn.textContent = 'Play';
     } else {
       currentTime = elapsed;
       update(elapsed, true);
