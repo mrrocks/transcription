@@ -19,6 +19,9 @@ const CONFIG = {
       return 60 / this.charactersPerMinute;
     },
   },
+  regex: {
+    wordPattern: /\b[\w\-']+\b|\(\w+\)/g,
+  },
 };
 
 const transcriptData = [
@@ -62,7 +65,7 @@ const getWordState = (word, currentTime) => {
 };
 
 const processWords = (text, startTime) => {
-  const words = text.match(/\b[\w\-']+\b/g) || [];
+  const words = text.match(CONFIG.regex.wordPattern) || [];
   let charCount = 0;
 
   return words.map(word => {
@@ -147,12 +150,12 @@ const createTranscriptPlayer = transcriptData => {
     el.querySelector('.speaker').textContent = segment.speaker;
 
     const textContent = segment.text.replace(
-      /\b([\w\-']+)\b/g,
-      (match, word) => {
-        const wordData = segment.words.find(w => w.text === word);
+      CONFIG.regex.wordPattern,
+      match => {
+        const wordData = segment.words.find(w => w.text === match);
         return wordData
-          ? `<span data-start="${wordData.start}">${word}</span>`
-          : word;
+          ? `<span data-start="${wordData.start}">${match}</span>`
+          : match;
       }
     );
 
