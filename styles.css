@@ -3,7 +3,11 @@
 :root {
   --hover-x: 4px;
   --hover-y: 2px;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 body {
@@ -24,7 +28,8 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 .transcript-controls {
@@ -36,14 +41,14 @@ body {
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  background-color: #5B53FF;
+  background-color: #5b53ff;
   color: white;
   cursor: pointer;
   font-size: 14px;
 }
 
 .transcript-controls button:hover {
-  background-color: #5B53FF;
+  background-color: #5b53ff;
 }
 
 .transcript-segment {
@@ -67,7 +72,6 @@ body {
   opacity: 0.7;
 }
 
-
 .bullet-point {
   display: inline-block;
   width: 3px;
@@ -80,8 +84,8 @@ body {
 }
 
 .text {
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 24px;
   color: rgba(243, 243, 247, 0.9);
 }
 

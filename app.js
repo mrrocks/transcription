@@ -2,11 +2,11 @@ import anime from 'animejs';
 
 const CONFIG = {
   animation: {
-    defaultDuration: 200,
+    defaultDuration: 150,
     defaultEasing: 'easeOutQuad',
     playbackEasing: 'linear',
     playbackTransitionDuration: 50,
-    highlightToPastDuration: 600,
+    highlightToPastDuration: 300,
   },
   colors: {
     active: '#7E85FF',
