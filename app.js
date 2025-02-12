@@ -62,15 +62,14 @@ const getWordState = (word, currentTime) => {
 };
 
 const processWords = (text, startTime) => {
-  const words = text.split(' ');
+  const words = text.match(/\b[\w\-']+\b/g) || [];
   let charCount = 0;
 
   return words.map(word => {
-    const chars = word.replace(/\s+/g, '').length;
+    const chars = word.length;
     const start = startTime + charCount * CONFIG.speed.secondsPerChar;
     charCount += chars;
     const end = startTime + charCount * CONFIG.speed.secondsPerChar;
-
     return { text: word, start, end, chars };
   });
 };
@@ -146,9 +145,18 @@ const createTranscriptPlayer = transcriptData => {
     el.querySelector('.timestamp').textContent =
       `${formatTime(segment.start)} / ${formatTime(segment.end)}`;
     el.querySelector('.speaker').textContent = segment.speaker;
-    el.querySelector('.text').innerHTML = segment.words
-      .map(word => `<span data-start="${word.start}">${word.text}</span>`)
-      .join(' ');
+
+    const textContent = segment.text.replace(
+      /\b([\w\-']+)\b/g,
+      (match, word) => {
+        const wordData = segment.words.find(w => w.text === word);
+        return wordData
+          ? `<span data-start="${wordData.start}">${word}</span>`
+          : word;
+      }
+    );
+
+    el.querySelector('.text').innerHTML = textContent;
 
     return el;
   };
