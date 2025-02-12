@@ -126,7 +126,6 @@ const createTranscriptPlayer = transcriptData => {
   let startTime = null;
   let pausedAt = 0;
 
-  const container = document.querySelector('.transcript-container');
   const segmentsContainer = document.getElementById('segments-container');
   const playPauseBtn = document.getElementById('playPauseBtn');
   const resetBtn = document.getElementById('resetBtn');
